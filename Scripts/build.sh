@@ -81,6 +81,9 @@ rm -rf "${APP_BUNDLE}"
 mkdir -p "${MACOS}" "${RESOURCES}"
 cp "${BUILD_DIR}/${PRODUCT}" "${MACOS}/"
 cp Resources/Info.plist "${CONTENTS}/"
+if [[ -f Resources/AppIcon.icns ]]; then
+    cp Resources/AppIcon.icns "${RESOURCES}/"
+fi
 
 if ! ${NO_SIGN}; then
     info "Code signing ${APP_BUNDLE}..."

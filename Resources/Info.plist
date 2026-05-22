@@ -11,6 +11,8 @@
     <string>Token Checker</string>
     <key>CFBundleExecutable</key>
     <string>TokenChecker</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>

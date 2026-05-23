@@ -121,8 +121,8 @@ struct ServiceSectionView: View {
     }
 
     private func color(for value: Double) -> Color {
-        if value < 0.5 { return .green }
-        if value < 0.75 { return .orange }
+        if value < 0.7 { return .green }
+        if value < 0.85 { return .orange }
         return .red
     }
 

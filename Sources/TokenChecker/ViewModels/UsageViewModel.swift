@@ -5,10 +5,8 @@ import OSLog
 @MainActor
 @Observable
 final class UsageViewModel {
-    // applicationWillTerminate から MainActor を経由せず shutdown を呼べるよう
-    // nonisolated 化する。providers 自体は immutable なので Sendable 違反は起きない。
-    private nonisolated let claudeProvider: UsageProvider
-    private nonisolated let codexProvider: UsageProvider
+    /// サービス → Provider のマップ（4サービス以上も柔軟に対応）
+    private nonisolated let providers: [Service: any UsageProvider]
 
     var snapshot: UsageSnapshot = .empty
     var isLoading: Bool = false
@@ -16,12 +14,13 @@ final class UsageViewModel {
         didSet { persistInterval() }
     }
 
-    init(
-        claudeProvider: UsageProvider = ClaudeUsageProvider(),
-        codexProvider: UsageProvider = CodexUsageProvider()
-    ) {
-        self.claudeProvider = claudeProvider
-        self.codexProvider = codexProvider
+    init(providers: [Service: any UsageProvider] = [
+        .claude: ClaudeUsageProvider(),
+        .codex: CodexUsageProvider(),
+        .grok: GrokUsageProvider(),     // スタブ（後で実装）
+        .gemini: GeminiUsageProvider()  // スタブ（Geminiは妥協案が必要）
+    ]) {
+        self.providers = providers
         self.pollingInterval = Self.loadPersistedInterval()
     }
 
@@ -39,16 +38,12 @@ final class UsageViewModel {
     }
 
     /// アプリ終了時に子プロセスや永続接続を解放するためのクロージャを返す。
-    ///
-    /// `@MainActor` final class である自身を `@Sendable` クロージャがキャプチャできないため
-    /// (Swift 6 strict-concurrency でエラー)、Sendable な providers だけを閉じ込めて公開する。
-    /// AppDelegate.applicationWillTerminate からは MainActor を経由せず呼ばれる。
     nonisolated func makeShutdownHandler() -> @Sendable () async -> Void {
-        let claude = claudeProvider
-        let codex = codexProvider
+        let provs = providers
         return {
-            await claude.shutdown()
-            await codex.shutdown()
+            for (_, p) in provs {
+                await p.shutdown()
+            }
         }
     }
 
@@ -56,34 +51,31 @@ final class UsageViewModel {
         isLoading = true
         defer { isLoading = false }
 
-        async let claude = fetchClaude()
-        async let codex = fetchCodex()
+        var results: [Service: Result<ServiceUsage, DomainError>] = [:]
 
-        let (c, x) = await (claude, codex)
-        snapshot = UsageSnapshot(claude: c, codex: x, fetchedAt: Date())
+        for (service, provider) in providers {
+            results[service] = await fetch(for: service, provider: provider)
+        }
+
+        snapshot = UsageSnapshot(results: results, fetchedAt: Date())
     }
 
-    private func fetchClaude() async -> Result<ServiceUsage, DomainError> {
+    private func fetch(for service: Service, provider: any UsageProvider) async -> Result<ServiceUsage, DomainError> {
         do {
-            return .success(try await claudeProvider.fetch())
+            let res = try await provider.fetch()
+            Logger.service(for: service).info("fetch success")
+            return .success(res)
         } catch let err as DomainError {
-            Logger.claude.error("fetch failed: \(err.localizedDescription)")
+            Logger.service(for: service).error("fetch failed: \(err.localizedDescription, privacy: .public)")
             return .failure(err)
         } catch {
-            return .failure(.network(error.localizedDescription))
+            let netErr = DomainError.network(error.localizedDescription)
+            Logger.service(for: service).error("fetch failed: \(netErr.localizedDescription, privacy: .public)")
+            return .failure(netErr)
         }
     }
 
-    private func fetchCodex() async -> Result<ServiceUsage, DomainError> {
-        do {
-            return .success(try await codexProvider.fetch())
-        } catch let err as DomainError {
-            Logger.codex.error("fetch failed: \(err.localizedDescription)")
-            return .failure(err)
-        } catch {
-            return .failure(.network(error.localizedDescription))
-        }
-    }
+    // 旧 fetchClaude / fetchCodex は refresh() 内の動的ループに置き換え済み
 
     // MARK: - ログインボタン
 
@@ -92,17 +84,37 @@ final class UsageViewModel {
     enum LoginTarget {
         case claude
         case codex
+        case grok
+        case gemini
 
         var command: String {
             switch self {
-            case .claude: return "claude login"
-            case .codex:  return "codex login"
+            case .claude:  return "claude login"
+            case .codex:   return "codex login"
+            case .grok:    return "~/.grok/bin/grok login || echo 'grok login command not confirmed yet'"
+            case .gemini:  return "echo 'Open https://aistudio.google.com/ to manage Gemini credentials'"
+            }
+        }
+
+        var displayName: String {
+            switch self {
+            case .claude: return "Claude Code"
+            case .codex: return "Codex"
+            case .grok: return "Grok"
+            case .gemini: return "Gemini"
             }
         }
     }
 
-    func openClaudeLogin() { spawnLogin(.claude) }
-    func openCodexLogin()  { spawnLogin(.codex) }
+    func openLogin(for service: Service) {
+        let target: LoginTarget = switch service {
+        case .claude: .claude
+        case .codex: .codex
+        case .grok: .grok
+        case .gemini: .gemini
+        }
+        spawnLogin(target)
+    }
 
     private func spawnLogin(_ target: LoginTarget) {
         let script = """

@@ -1,25 +1,34 @@
 import Foundation
+import CFNetwork
 
 /// Anthropic の OAuth ベース usage エンドポイントを叩いて生 DTO を返す。
 struct AnthropicUsageAPIClient: Sendable {
     static let usageURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
-    /// Bearer トークンを保持したまま追従先へ再送されるのを防ぐため、
-    /// 専用 URLSession にリダイレクト不許可のデリゲートを噛ませる。
-    /// `URLSession.shared` の既定動作は Authorization ヘッダ込みでリダイレクトを追従するため、
-    /// `api.anthropic.com` が MITM / DNS 汚染で Location を返した場合に OAuth トークンが漏れる。
-    private static let session: URLSession = {
+    func fetch(accessToken: String) async throws -> AnthropicUsageDTO {
+        let proxyPort = await ProxyDetector.detectProxyPort()
+        
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 10
         config.timeoutIntervalForResource = 15
-        return URLSession(
+        
+        if let port = proxyPort {
+            var proxies: [AnyHashable: Any] = [:]
+            proxies[kCFNetworkProxiesHTTPEnable] = 1
+            proxies[kCFNetworkProxiesHTTPProxy] = "127.0.0.1"
+            proxies[kCFNetworkProxiesHTTPPort] = port
+            proxies[kCFNetworkProxiesHTTPSEnable] = 1
+            proxies[kCFNetworkProxiesHTTPSProxy] = "127.0.0.1"
+            proxies[kCFNetworkProxiesHTTPSPort] = port
+            config.connectionProxyDictionary = proxies
+        }
+        
+        let session = URLSession(
             configuration: config,
             delegate: NoRedirectDelegate.shared,
             delegateQueue: nil
         )
-    }()
 
-    func fetch(accessToken: String) async throws -> AnthropicUsageDTO {
         var request = URLRequest(url: Self.usageURL)
         request.httpMethod = "GET"
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
@@ -27,7 +36,7 @@ struct AnthropicUsageAPIClient: Sendable {
 
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await Self.session.data(for: request)
+            (data, response) = try await session.data(for: request)
         } catch {
             throw DomainError.network(error.localizedDescription)
         }

@@ -12,11 +12,11 @@ enum PollingInterval: Int, CaseIterable, Identifiable, Codable, Sendable {
 
     var label: String {
         switch self {
-        case .sec30: return "30秒"
-        case .min1:  return "1分"
-        case .min2:  return "2分"
-        case .min5:  return "5分"
-        case .min10: return "10分"
+        case .sec30: return L("30s")
+        case .min1:  return L("1 min")
+        case .min2:  return L("2 min")
+        case .min5:  return L("5 min")
+        case .min10: return L("10 min")
         }
     }
 

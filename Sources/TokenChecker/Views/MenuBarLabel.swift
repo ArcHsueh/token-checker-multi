@@ -1,11 +1,8 @@
 import SwiftUI
 import AppKit
 
-/// メニューバーに表示する「2 つのドーナツ + %」。
-///
-/// SwiftUI ビューを `ImageRenderer` で NSImage に焼いて、
-/// `Image(nsImage:)` でメニューバーに渡す。
-/// `MenuBarExtra` の label に SwiftUI ビューを直接渡すとフォント等が制限されるため。
+/// メニューバーには「最も使用率が高いサービス」の1つのドーナツだけ表示。
+/// クリックでポップオーバーを縦に展開して全サービスの詳細を見る形。
 struct MenuBarLabel: View {
     let viewModel: UsageViewModel
 
@@ -18,36 +15,44 @@ struct MenuBarLabel: View {
     }
 
     private var renderedImage: NSImage? {
-        let claude = utilization(from: viewModel.snapshot.claude)
-        let codex = utilization(from: viewModel.snapshot.codex)
-        let content = HStack(spacing: 6) {
-            HStack(spacing: 3) {
-                DonutChartView(
-                    value: claude ?? 0,
-                    size: 20,
-                    lineWidth: 3,
-                    center: .sfSymbol("sparkles", scale: 0.48)
-                )
-                Text(percentLabel(claude))
+        // 找出当前 5 小时使用率最高的那个服务
+        let services: [Service] = [.claude, .codex, .grok, .gemini]
+        let mostConstrained = services
+            .compactMap { service -> (Service, Double)? in
+                guard let util = utilization(for: service) else { return nil }
+                return (service, util)
+            }
+            .max { $0.1 < $1.1 } // 取 utilization 最大的
+
+        guard let (service, util) = mostConstrained else {
+            // 所有服务都还没数据时显示占位
+            let placeholder = HStack(spacing: 4) {
+                DonutChartView(value: 0, size: 18, lineWidth: 2.5, center: .sfSymbol("questionmark", scale: 0.45))
+                Text("--%")
                     .font(.system(size: 11, weight: .semibold))
             }
-            HStack(spacing: 3) {
-                DonutChartView(
-                    value: codex ?? 0,
-                    size: 20,
-                    lineWidth: 3,
-                    center: .sfSymbol("terminal.fill", scale: 0.48)
-                )
-                Text(percentLabel(codex))
-                    .font(.system(size: 11, weight: .semibold))
-            }
+            .padding(.horizontal, 4)
+            .foregroundStyle(Color.primary)
+
+            let renderer = ImageRenderer(content: placeholder)
+            renderer.scale = 3
+            return renderer.nsImage
         }
-        .padding(.horizontal, 2)
+
+        let content = HStack(spacing: 4) {
+            DonutChartView(
+                value: util,
+                size: 18,
+                lineWidth: 2.5,
+                center: .sfSymbol(service.iconName, scale: 0.45)
+            )
+            Text(percentLabel(util))
+                .font(.system(size: 11, weight: .semibold))
+        }
+        .padding(.horizontal, 4)
         .foregroundStyle(Color.primary)
 
         let renderer = ImageRenderer(content: content)
-        // ビットマップは高 DPI で焼いておく．image.size には触らない
-        // （触ると point 単位として誤認されて表示サイズまで縮んでしまう）．
         let maxScale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 2
         renderer.scale = max(maxScale, 3)
         guard let image = renderer.nsImage else { return nil }
@@ -55,15 +60,13 @@ struct MenuBarLabel: View {
         return image
     }
 
-    private func utilization(from result: Result<ServiceUsage, DomainError>?) -> Double? {
-        guard case .success(let usage) = result else { return nil }
+    private func utilization(for service: Service) -> Double? {
+        guard case .success(let usage) = viewModel.snapshot.results[service] else { return nil }
         return usage.fiveHour?.utilization
     }
 
     private func percentLabel(_ value: Double?) -> String {
         guard let v = value else { return "--%" }
-        // メニューバーは横幅が限られるため 100% で頭打ちにし、超過は "+" で示す。
-        // RateLimit.utilization は仕様上 1.0 を超えうる（Anthropic API 既知挙動）。
         if v > 1.0 { return "100%+" }
         let clamped = max(0, v)
         return "\(Int((clamped * 100).rounded()))%"

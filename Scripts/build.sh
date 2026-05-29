@@ -86,6 +86,12 @@ if [[ ! -f Resources/AppIcon.icns ]]; then
 fi
 cp Resources/AppIcon.icns "${RESOURCES}/"
 
+# Localization catalogs: copy each *.lproj into the bundle Resources so
+# NSLocalizedString (main bundle) resolves per the user's system language.
+for lproj in Resources/*.lproj; do
+    [[ -d "${lproj}" ]] && cp -R "${lproj}" "${RESOURCES}/"
+done
+
 # MIT 帰属表示の同梱: 本ソフトウェアおよび ccmeter (MIT) 由来部分のライセンス本文と
 # 著作権表示を配布バイナリ内に同梱する必要がある．
 if [[ -f LICENSE ]]; then

@@ -1,22 +1,15 @@
 import SwiftUI
 
-/// Claude / Codex 1 サービスぶんの詳細セクション。
-/// どのブランドのセクションかを表す。
-enum ServiceBrand {
-    case claude
-    case codex
-}
-
 struct ServiceSectionView: View {
     let title: String
-    let brand: ServiceBrand
+    let brand: Service
     let result: Result<ServiceUsage, DomainError>?
     let loginAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                brandMark
+                Image(systemName: brand.iconName)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text(title)
@@ -28,12 +21,12 @@ struct ServiceSectionView: View {
                     Image(systemName: "person.badge.key")
                 }
                 .buttonStyle(.borderless)
-                .help("\(title) にログイン")
+                .help(L("Sign in to %@", title))
             }
 
             switch result {
             case .none:
-                Text("取得中…")
+                Text(L("Loading…"))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             case .some(.success(let usage)):
@@ -47,18 +40,18 @@ struct ServiceSectionView: View {
     @ViewBuilder
     private func usageBlock(_ usage: ServiceUsage) -> some View {
         if let five = usage.fiveHour {
-            limitRow(label: "5時間", limit: five)
+            limitRow(label: L("5 hours"), limit: five)
         } else {
-            Text("5時間ウィンドウのデータがありません")
+            Text(L("No data for the 5-hour window"))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
 
         if let weekly = usage.weekly {
-            secondaryRow(label: "週次", limit: weekly)
+            secondaryRow(label: L("Weekly"), limit: weekly)
         }
         if let sonnet = usage.weeklySonnet {
-            secondaryRow(label: "週次 (Sonnet)", limit: sonnet)
+            secondaryRow(label: L("Weekly (Sonnet)"), limit: sonnet)
         }
     }
 
@@ -97,10 +90,10 @@ struct ServiceSectionView: View {
             HStack(spacing: 4) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
-                Text("取得失敗")
+                Text(L("Fetch failed"))
                     .font(.system(size: 12, weight: .medium))
             }
-            Text(err.errorDescription ?? "原因不明")
+            Text(err.errorDescription ?? L("Unknown cause"))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -108,16 +101,6 @@ struct ServiceSectionView: View {
         .padding(8)
         .background(Color.orange.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-
-    @ViewBuilder
-    private var brandMark: some View {
-        switch brand {
-        case .claude:
-            Image(systemName: "sparkles")
-        case .codex:
-            Image(systemName: "terminal.fill")
-        }
     }
 
     private func color(for value: Double) -> Color {
@@ -128,12 +111,12 @@ struct ServiceSectionView: View {
 
     private func resetLabel(_ date: Date) -> String {
         let now = Date()
-        if date <= now { return "まもなくリセット" }
+        if date <= now { return L("Resets soon") }
         let f = DateComponentsFormatter()
         f.allowedUnits = [.hour, .minute]
         f.unitsStyle = .abbreviated
         let rel = f.string(from: now, to: date) ?? "—"
         let absolute = DateFormatter.localizedString(from: date, dateStyle: .none, timeStyle: .short)
-        return "あと \(rel) (\(absolute) リセット)"
+        return L("%@ left (resets %@)", rel, absolute)
     }
 }

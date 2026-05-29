@@ -1,4 +1,5 @@
 @preconcurrency import Foundation
+import OSLog
 
 /// `codex app-server` を spawn して JSON-RPC で会話する actor。
 ///
@@ -19,14 +20,16 @@ actor CodexAppServerClient {
     private var lineBuffer = JSONRPCLineBuffer()
 
     init(
-        candidates: [String] = [
+        candidates: [String]? = nil,
+        requestTimeout: TimeInterval = 8
+    ) {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
+        self.candidates = candidates ?? [
+            "\(home)/Library/Application Support/kooky/bin/codex",
             "/opt/homebrew/bin/codex",
             "/usr/local/bin/codex",
             "/usr/bin/codex",
-        ],
-        requestTimeout: TimeInterval = 8
-    ) {
-        self.candidates = candidates
+        ]
         self.requestTimeout = requestTimeout
     }
 
@@ -39,12 +42,16 @@ actor CodexAppServerClient {
             throw DomainError.codexCLINotFound
         }
 
+        let proxyPort = await ProxyDetector.detectProxyPort()
+
         let proc = Process()
         let inP = Pipe(), outP = Pipe(), errP = Pipe()
 
         proc.executableURL = executable
         proc.arguments = ["app-server"]
-        proc.environment = Self.childEnvironment(from: ProcessInfo.processInfo.environment)
+        let childEnv = Self.childEnvironment(from: ProcessInfo.processInfo.environment, proxyPort: proxyPort)
+        Logger.codex.info("Spawning \(executable.path, privacy: .public) with env: \(childEnv, privacy: .public)")
+        proc.environment = childEnv
         proc.standardInput = inP
         proc.standardOutput = outP
         proc.standardError = errP
@@ -58,9 +65,10 @@ actor CodexAppServerClient {
             Task { await self?.handleStdout(data) }
         }
         errP.fileHandleForReading.readabilityHandler = { handle in
-            // stderr を捨てるとしても availableData を読まなければ macOS のパイプバッファ
-            // (既定 64 KiB) が解放されず、子プロセスが write(2) でブロックする。必ずドレインする。
-            _ = handle.availableData
+            let data = handle.availableData
+            if !data.isEmpty, let msg = String(data: data, encoding: .utf8) {
+                Logger.codex.error("stderr: \(msg, privacy: .public)")
+            }
         }
 
         do {
@@ -103,6 +111,9 @@ actor CodexAppServerClient {
 
     func readRateLimits() async throws -> CodexRateLimitsDTO {
         let envelope = try await request(method: "account/rateLimits/read", params: EmptyParams())
+        if let error = envelope.error {
+            throw DomainError.codexRPCError(message: error.message)
+        }
         guard let result = envelope.result else {
             throw DomainError.codexRPCError(message: "missing result for account/rateLimits/read")
         }
@@ -127,7 +138,7 @@ actor CodexAppServerClient {
     /// 起動した場合に `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `AWS_*` 等の秘密が
     /// 子に渡ってしまう。codex 自身が必要とするのは PATH と HOME 程度なので、
     /// それ以外は意図的に渡さない。
-    private static func childEnvironment(from base: [String: String]) -> [String: String] {
+    private static func childEnvironment(from base: [String: String], proxyPort: Int?) -> [String: String] {
         // codex が動くのに必要な最小キーだけ通す
         let allowedKeys: Set<String> = [
             "HOME", "USER", "LOGNAME", "SHELL",
@@ -142,9 +153,32 @@ actor CodexAppServerClient {
             if let value = base[key] { env[key] = value }
         }
 
-        // PATH は固定セット + 親の PATH の安全な部分をマージ
+        let home = env["HOME"] ?? NSHomeDirectory()
+        if env["USER"] == nil { env["USER"] = NSUserName() }
+        if env["LOGNAME"] == nil { env["LOGNAME"] = NSUserName() }
+        if env["HOME"] == nil { env["HOME"] = home }
+
+        if let port = proxyPort {
+            env["HTTP_PROXY"] = "http://127.0.0.1:\(port)"
+            env["HTTPS_PROXY"] = "http://127.0.0.1:\(port)"
+            env["all_proxy"] = "socks5://127.0.0.1:\(port)"
+            env["ALL_PROXY"] = "socks5://127.0.0.1:\(port)"
+            env["http_proxy"] = "http://127.0.0.1:\(port)"
+            env["https_proxy"] = "http://127.0.0.1:\(port)"
+        }
+
+        // PATH は固定セット + 親的 PATH の安全な部分をマージ
         let basePathDirs = (base["PATH"] ?? "").split(separator: ":").map(String.init)
-        let extras = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+        let extras = [
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/bin",
+            "\(home)/.local/bin",
+            "\(home)/.fnm/shims",
+            "\(home)/.nvm/current/bin",
+            "\(home)/Library/Application Support/kooky/bin",
+        ]
         var seen = Set<String>()
         let merged = (extras + basePathDirs).filter { seen.insert($0).inserted }.joined(separator: ":")
         env["PATH"] = merged

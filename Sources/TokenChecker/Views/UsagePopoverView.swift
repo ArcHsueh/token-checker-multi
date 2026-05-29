@@ -9,21 +9,18 @@ struct UsagePopoverView: View {
         VStack(alignment: .leading, spacing: 12) {
             header
 
-            ServiceSectionView(
-                title: "Claude Code",
-                brand: .claude,
-                result: viewModel.snapshot.claude,
-                loginAction: { viewModel.openClaudeLogin() }
-            )
+            // 4サービスを動的に表示
+            let services: [Service] = [.claude, .codex, .grok, .gemini]
+            ForEach(Array(services.enumerated()), id: \.offset) { index, service in
+                if index > 0 { Divider() }
 
-            Divider()
-
-            ServiceSectionView(
-                title: "Codex",
-                brand: .codex,
-                result: viewModel.snapshot.codex,
-                loginAction: { viewModel.openCodexLogin() }
-            )
+                ServiceSectionView(
+                    title: service.displayName,
+                    brand: service,
+                    result: viewModel.snapshot.results[service],
+                    loginAction: { viewModel.openLogin(for: service) }
+                )
+            }
 
             Divider()
             settingsBlock
@@ -31,7 +28,7 @@ struct UsagePopoverView: View {
             footer
         }
         .padding(16)
-        .frame(width: 320)
+        .frame(width: 340) // 少し広げて4サービス対応
     }
 
     private var header: some View {
@@ -45,7 +42,7 @@ struct UsagePopoverView: View {
     private var settingsBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("更新間隔")
+                Text(L("Refresh interval"))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -59,7 +56,7 @@ struct UsagePopoverView: View {
             }
 
             HStack {
-                Text("ログイン時に自動起動")
+                Text(L("Launch at login"))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -77,7 +74,7 @@ struct UsagePopoverView: View {
     private var footer: some View {
         HStack {
             if viewModel.snapshot.fetchedAt > .distantPast {
-                Text("更新: \(DateFormatter.localizedString(from: viewModel.snapshot.fetchedAt, dateStyle: .none, timeStyle: .short))")
+                Text(L("Updated: %@", DateFormatter.localizedString(from: viewModel.snapshot.fetchedAt, dateStyle: .none, timeStyle: .short)))
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -92,9 +89,9 @@ struct UsagePopoverView: View {
                 }
             }
             .buttonStyle(.borderless)
-            .help("今すぐ更新")
+            .help(L("Refresh now"))
 
-            Button("終了") {
+            Button(L("Quit")) {
                 NSApplication.shared.terminate(nil)
             }
             .buttonStyle(.borderless)

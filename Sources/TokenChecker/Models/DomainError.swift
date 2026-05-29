@@ -8,6 +8,11 @@ enum DomainError: Error, Equatable, LocalizedError, Sendable {
     case codexCLINotFound
     case codexProcessExited
     case codexRPCError(message: String)
+
+    // Grok (xAI)
+    case grokAuthMissing
+    case grokUnauthorized
+    case grokHTTP(status: Int)
     case decoding(String)
     case timeout
     case network(String)
@@ -15,29 +20,38 @@ enum DomainError: Error, Equatable, LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .keychainTokenMissing:
-            return "Claude Code の OAuth トークンが Keychain に見つかりません。ターミナルで `claude login` を実行してください。"
+            return L("Claude Code OAuth token not found in Keychain. Run `claude login` in the terminal.")
         case .anthropicUnauthorized:
-            return "Anthropic からの認証エラー (401)。`claude login` で再ログインしてください。"
+            return L("Authentication error from Anthropic (401). Re-login with `claude login`.")
         case .anthropicRateLimited(let retryAfter):
             if let sec = retryAfter {
                 let mins = max(1, Int((sec / 60).rounded()))
-                return "Anthropic API のレート制限に達しました。約 \(mins) 分後に自動で再試行します。"
+                return L("Anthropic API rate limit reached. Retrying automatically in about %d min.", mins)
             }
-            return "Anthropic API のレート制限 (429)。次回ポーリングまで待機します。"
+            return L("Anthropic API rate limit (429). Waiting until the next poll.")
         case .anthropicHTTP(let status):
-            return "Anthropic API エラー (status \(status))"
+            return L("Anthropic API error (status %d)", status)
         case .codexCLINotFound:
-            return "Codex CLI が見つかりません。`npm i -g @openai/codex` を実行してください。"
+            return L("Codex CLI not found. Run `npm i -g @openai/codex`.")
         case .codexProcessExited:
-            return "codex app-server が終了しました。再起動を試みます。"
+            return L("codex app-server exited. Attempting to restart.")
         case .codexRPCError(let message):
-            return "Codex RPC エラー: \(message)"
+            return L("Codex RPC error: %@", message)
+
+        // Grok
+        case .grokAuthMissing:
+            return L("Grok CLI auth not found. Make sure you have run the Grok CLI at least once.")
+        case .grokUnauthorized:
+            return L("Grok authentication failed (401). Try logging in again with the Grok CLI.")
+        case .grokHTTP(let status):
+            return L("Grok API error (status %d)", status)
+
         case .decoding(let detail):
-            return "レスポンスのデコードに失敗: \(detail)"
+            return L("Failed to decode response: %@", detail)
         case .timeout:
-            return "通信がタイムアウトしました。"
+            return L("Request timed out.")
         case .network(let detail):
-            return "ネットワークエラー: \(detail)"
+            return L("Network error: %@", detail)
         }
     }
 }

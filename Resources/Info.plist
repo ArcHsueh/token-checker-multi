@@ -27,5 +27,13 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 Token Checker contributors</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>ja</string>
+        <string>zh-Hans</string>
+    </array>
 </dict>
 </plist>

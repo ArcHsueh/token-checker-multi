@@ -1,163 +1,193 @@
-# Token Checker
+# Token Checker Multi / 多服务增强版
 
-macOS のメニューバーに Claude Code と Codex の使用率を常時表示する macOS アプリケーション。
+**中文**  
+一个增强版的 macOS 菜单栏工具，支持 Claude Code、Codex 和 Grok 的使用率实时监控。菜单栏仅显示使用率最高的单个甜甜圈，点击后展开完整纵向列表查看所有服务详情。
 
-<p align="center">
-  <img src=".github/assets/menubar.svg" alt="メニューバー表示" width="640"/>
-</p>
-
-## 概要
-
-ターミナルで `claude login` / `codex login` を完了済みのアカウントに対し、Anthropic の OAuth エンドポイントおよび `codex app-server` の JSON-RPC を経由してレート制限情報を取得する。取得結果はメニューバーに 2 個のドーナツチャートと数値で表示され、クリックでポップオーバーに 5 時間ウィンドウと週次ウィンドウの詳細を展開する。
-
-## 動作要件
-
-| 項目 | 値 |
-| --- | --- |
-| macOS | 14 Sonoma 以上 |
-| Swift | 5.9 以上（Xcode Command Line Tools で可） |
-| Claude Code CLI | `claude login` 済み |
-| Codex CLI | `codex login` 済み |
-
-Claude Code と Codex のいずれかが欠けていても、もう一方は動作する。
-
-## インストール
-
-このリポジトリを clone した上で、自分のマシンでビルドして使うことを前提とする。
-
-```bash
-./Scripts/build.sh --install
-```
-
-ビルド時に Apple Development の署名 identity が見つからない場合は ad-hoc 署名が自動的に使われる。自分でビルドした `.app` はそのまま起動できる。
-
-インストール後は Finder の「アプリケーション」から `TokenChecker` を開くか、ターミナルから以下を実行して起動する。
-
-```bash
-open /Applications/TokenChecker.app
-```
-
-
-## 使用方法
-
-事前にターミナルで以下を実行し、両サービスにログインしておく。
-
-```bash
-claude login
-codex login
-```
-
-いずれもブラウザの OAuth フローを経て、Keychain または `~/.codex/auth.json` にトークンが保存される。アプリは保存されたトークンを参照するため、ログインは CLI 側で 1 度行えばよい。
-
-
-<p align="center">
-  <img src=".github/assets/popover.svg" alt="ポップオーバー表示" width="320"/>
-</p>
-
-クリックで展開するポップオーバーには、5 時間ウィンドウと週次ウィンドウの使用率、リセットまでの残時間、更新間隔（30 秒〜10 分、既定 5 分）、ログイン時の自動起動トグルが含まれる。
-
-## データ取得経路
-
-- **Claude**: `/usr/bin/security` 経由で Keychain (`Claude Code-credentials`) から OAuth アクセストークンを取得し、`https://api.anthropic.com/api/oauth/usage` に対して `anthropic-beta: oauth-2025-04-20` ヘッダー付きで GET する。
-- **Codex**: `/opt/homebrew/bin/codex app-server` を子プロセスとして起動し、行区切り JSON-RPC 経由で `account/rateLimits/read` を呼ぶ。
-
-
-## アンインストール
-
-```bash
-killall TokenChecker
-defaults delete com.token-checker.app 2>/dev/null
-```
-
-## ライセンス
-
-本ソフトウェアは [MIT License](./LICENSE) で配布される。
-なお「Anthropic」「Claude」「Codex」は各社の商標であり、本ソフトウェアは Anthropic および OpenAI の公式プロダクトではなく、両社による承認・推奨を受けたものでもない。
-
-## 免責事項
-
-本ソフトウェアは現状有姿 (as-is) で提供されるものであり、動作・安全性・正確性について一切の保証を行わない。本ソフトウェアの利用に起因して発生したいかなる損害 (データ損失、アカウント停止、トークン漏洩、セキュリティインシデント等を含むがこれに限らない) についても、作者は一切の責任を負わない。利用者自身の責任において使用すること。
-
-## 謝辞
-
-UI のデザインは [s-age/ccmeter](https://github.com/s-age/ccmeter)（MIT License）を参考にした。MIT ライセンスは [`LICENSE`](./LICENSE) に同梱している。
-
-<br>
+**English**  
+An enhanced macOS menu bar app for real-time usage monitoring of Claude Code, Codex, and Grok. The menu bar shows only a single donut for the highest-usage service; click to expand a full vertical list with details for all services.
 
 ---
 
-<br>
+## 原项目简介（保留日文 / Original Japanese Introduction）
 
-# Token Checker
+このリポジトリは、[otoha1119/token-checker](https://github.com/otoha1119/token-checker) をベースに大幅に拡張したフォーク版です。
 
-A macOS menu bar application that displays Claude Code and Codex usage in real time.
+元のプロジェクトは以下の通りです：
 
-## Overview
+> macOS のメニューバーに Claude Code と Codex の使用率を常時表示する macOS アプリケーション。
 
-For accounts already authenticated via `claude login` / `codex login`, this app retrieves rate-limit information through the Anthropic OAuth endpoint and the `codex app-server` JSON-RPC. Results are shown as two donut charts with numeric values in the menu bar; clicking opens a popover with detailed 5-hour and weekly window data.
+ターミナルで `claude login` / `codex login` を完了済みのアカウントに対し、Anthropic の OAuth エンドポイントおよび `codex app-server` の JSON-RPC を経由してレート制限情報を取得する。取得結果はメニューバーに 2 個のドーナツチャートと数値で表示され、クリックでポップオーバーに 5 時間ウィンドウと週次ウィンドウの詳細を展開する。
 
-## Requirements
+---
 
-| Item | Value |
-| --- | --- |
-| macOS | 14 Sonoma or later |
-| Swift | 5.9 or later (Xcode Command Line Tools is sufficient) |
-| Claude Code CLI | authenticated via `claude login` |
-| Codex CLI | authenticated via `codex login` |
+## 主要改动 / Key Modifications
 
-If only one of Claude Code or Codex is available, the other still works.
+**中文**  
+- 新增 Grok 支持：通过读取 `~/.grok/auth.json` 获取使用率信息
+- 移除 Gemini 支持（使用频率较低，暂不维护）
+- UI 大幅优化：菜单栏仅显示一个甜甜圈（当前使用率最高的服务）
+- 点击菜单栏图标后，以纵向列表形式展示全部服务详情
+- 支持三个服务：Claude Code、Codex、Grok
 
-## Installation
+**English**  
+- Added Grok support (reads from `~/.grok/auth.json`)
+- Removed Gemini support (low usage frequency)
+- Major UI improvement: menu bar now shows only one donut (the service with highest current usage)
+- Clicking the menu bar icon opens a clean vertical list showing details for all services
+- Currently supports three services: Claude Code, Codex, and Grok
 
-Clone this repository and build on your own machine.
+---
+
+## 功能特点 / Features
+
+**中文**  
+- 菜单栏常驻显示最高使用率服务的甜甜圈 + 百分比
+- 点击展开后可查看各服务的 5 小时窗口和周窗口使用率
+- 支持自动刷新（可调节间隔）
+- 支持开机自启动
+- 基于原项目优秀架构，扩展性良好
+
+**English**  
+- Menu bar always shows a single donut + percentage of the most constrained service
+- Click to expand and view 5-hour and weekly usage windows for each service
+- Configurable auto-refresh interval
+- Supports launch at login
+- Built on the solid architecture of the original project with good extensibility
+
+---
+
+## 动作要件 / Requirements
+
+| 项目 / Item          | 值 / Value                                      |
+|----------------------|-------------------------------------------------|
+| macOS                | 14 Sonoma 及以上 / 14 Sonoma or later           |
+| Swift                | 5.9 及以上（Xcode Command Line Tools 即可）     |
+| Claude Code CLI      | 已执行 `claude login`                           |
+| Codex CLI            | 已执行 `codex login`                            |
+| Grok CLI (可选)      | 已安装并登录 `~/.grok/bin/grok`                 |
+
+**中文**：三个服务中任意缺少都不会影响其他服务的正常工作。
+
+**English**: The absence of any service does not affect the functionality of the others.
+
+---
+
+## 安装 / Installation
+
+**中文**  
+克隆本仓库后，在本地构建并安装：
 
 ```bash
 ./Scripts/build.sh --install
 ```
 
-If no Apple Development signing identity is found, ad-hoc signing is used automatically. A `.app` you built yourself can be launched directly.
+构建时若未找到 Apple Development 签名身份，将自动使用 ad-hoc 签名。你构建的 `.app` 可直接运行。
 
-After installation, open `TokenChecker` from Finder's Applications folder, or run:
+安装完成后，可从 Finder 的「应用程序」文件夹打开 `TokenChecker`，或执行：
 
 ```bash
 open /Applications/TokenChecker.app
 ```
 
-## Usage
+**English**  
+Clone this repository and build on your machine:
 
-First, log in to both services from the terminal:
+```bash
+./Scripts/build.sh --install
+```
+
+If no Apple Development signing identity is found, ad-hoc signing will be used automatically. The built `.app` can be launched directly.
+
+After installation, open `TokenChecker` from the Applications folder, or run:
+
+```bash
+open /Applications/TokenChecker.app
+```
+
+---
+
+## 使用方法 / Usage
+
+**中文**  
+首次使用前，请在终端分别登录对应服务：
 
 ```bash
 claude login
 codex login
+~/.grok/bin/grok login     # 如需使用 Grok
 ```
 
-Each uses a browser-based OAuth flow that saves a token to Keychain or `~/.codex/auth.json`. The app reads the saved tokens, so you only need to log in once via the CLI.
+登录后 token 会保存在 Keychain 或 `~/.grok/auth.json` 中，应用会自动读取。
 
-The popover (opened by clicking the menu bar item) shows 5-hour and weekly window utilization, reset countdowns, a refresh-interval picker (30 seconds to 10 minutes, default 5 minutes), and a launch-at-login toggle.
+**English**  
+Before first use, log in to the services via terminal:
 
-## Data Sources
+```bash
+claude login
+codex login
+~/.grok/bin/grok login     # For Grok support
+```
 
-- **Claude**: retrieves the OAuth access token from Keychain (`Claude Code-credentials`) via `/usr/bin/security`, then issues a GET request to `https://api.anthropic.com/api/oauth/usage` with the `anthropic-beta: oauth-2025-04-20` header.
-- **Codex**: spawns `/opt/homebrew/bin/codex app-server` as a subprocess and calls `account/rateLimits/read` via line-delimited JSON-RPC.
+Tokens are saved to Keychain or `~/.grok/auth.json`. The app reads them automatically.
 
-## Uninstall
+---
+
+## 数据获取方式 / Data Sources
+
+**中文**  
+- **Claude Code**: 通过 Keychain 读取 OAuth Token，调用 Anthropic 官方 usage 接口
+- **Codex**: 启动 `codex app-server` 子进程，通过 JSON-RPC 获取速率限制
+- **Grok**: 读取 `~/.grok/auth.json` 中的 JWT Token，解析使用情况（当前基于 tier 的实现）
+
+**English**  
+- **Claude Code**: Reads OAuth token from Keychain and calls Anthropic’s official usage endpoint
+- **Codex**: Spawns `codex app-server` subprocess and queries rate limits via JSON-RPC
+- **Grok**: Reads JWT from `~/.grok/auth.json` and parses usage information (currently tier-based)
+
+---
+
+## 卸载 / Uninstall
 
 ```bash
 killall TokenChecker
 defaults delete com.token-checker.app 2>/dev/null
+rm -rf /Applications/TokenChecker.app
 ```
 
-## License
+---
 
-Distributed under the [MIT License](./LICENSE).
+## 许可证 / License
 
-"Anthropic", "Claude", and "Codex" are trademarks of their respective owners. This software is not an official product of Anthropic or OpenAI, and is not endorsed or approved by either company.
+本软件基于 [MIT License](./LICENSE) 发布。
 
-## Disclaimer
+原项目作者：otoha1119  
+本增强版由 ArcHsueh 维护。
 
-This software is provided "as is", without warranty of any kind regarding operation, safety, or accuracy. The author assumes no responsibility for any damages (including but not limited to data loss, account suspension, token leakage, or security incidents) arising from use of this software. Use at your own risk.
+"Anthropic", "Claude", "Codex", "Grok" 均为各自公司的商标。本软件与上述公司无关，亦未获得其认可。
 
-## Acknowledgments
+---
 
-The UI design references [s-age/ccmeter](https://github.com/s-age/ccmeter) (MIT License). The full MIT license text is included in [`LICENSE`](./LICENSE).
+## 免责声明 / Disclaimer
+
+本软件按“现状”提供，不提供任何形式的明示或暗示保证。使用本软件所产生的任何后果（包括但不限于数据丢失、账户限制、隐私泄露等），作者概不负责。请自行承担使用风险。
+
+---
+
+## 致谢 / Acknowledgments
+
+- 原项目 UI 设计参考了 [s-age/ccmeter](https://github.com/s-age/ccmeter)（MIT License）
+- 感谢原作者 otoha1119 提供的优秀基础框架
+- Grok 支持参考了 xAI Grok CLI 的认证机制
+
+---
+
+## 贡献 / Contributing
+
+欢迎提交 Issue 和 Pull Request，共同改进对 Grok 等新服务的支持。
+
+---
+
+**项目地址**  
+https://github.com/ArcHsueh/token-checker-multi
+
+原项目：https://github.com/otoha1119/token-checker

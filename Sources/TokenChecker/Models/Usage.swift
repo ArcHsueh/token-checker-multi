@@ -5,7 +5,6 @@ enum Service: String, CaseIterable, Identifiable, Sendable {
     case claude = "claude"
     case codex = "codex"
     case grok = "grok"
-    case gemini = "gemini"
 
     var id: String { rawValue }
 
@@ -14,7 +13,6 @@ enum Service: String, CaseIterable, Identifiable, Sendable {
         case .claude: return "Claude Code"
         case .codex: return "Codex"
         case .grok: return "Grok"
-        case .gemini: return "Gemini"
         }
     }
 
@@ -24,7 +22,6 @@ enum Service: String, CaseIterable, Identifiable, Sendable {
         case .claude: return "sparkles"
         case .codex: return "terminal.fill"
         case .grok: return "x.circle.fill"
-        case .gemini: return "g.circle.fill"
         }
     }
 }

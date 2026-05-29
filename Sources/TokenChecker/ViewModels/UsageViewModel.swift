@@ -17,8 +17,7 @@ final class UsageViewModel {
     init(providers: [Service: any UsageProvider] = [
         .claude: ClaudeUsageProvider(),
         .codex: CodexUsageProvider(),
-        .grok: GrokUsageProvider(),     // スタブ（後で実装）
-        .gemini: GeminiUsageProvider()  // スタブ（Geminiは妥協案が必要）
+        .grok: GrokUsageProvider()
     ]) {
         self.providers = providers
         self.pollingInterval = Self.loadPersistedInterval()
@@ -85,23 +84,20 @@ final class UsageViewModel {
         case claude
         case codex
         case grok
-        case gemini
 
         var command: String {
             switch self {
-            case .claude:  return "claude login"
-            case .codex:   return "codex login"
-            case .grok:    return "~/.grok/bin/grok login || echo 'grok login command not confirmed yet'"
-            case .gemini:  return "echo 'Open https://aistudio.google.com/ to manage Gemini credentials'"
+            case .claude: return "claude login"
+            case .codex:  return "codex login"
+            case .grok:   return "~/.grok/bin/grok login || echo 'grok login command not confirmed yet'"
             }
         }
 
         var displayName: String {
             switch self {
             case .claude: return "Claude Code"
-            case .codex: return "Codex"
-            case .grok: return "Grok"
-            case .gemini: return "Gemini"
+            case .codex:  return "Codex"
+            case .grok:   return "Grok"
             }
         }
     }
@@ -109,9 +105,8 @@ final class UsageViewModel {
     func openLogin(for service: Service) {
         let target: LoginTarget = switch service {
         case .claude: .claude
-        case .codex: .codex
-        case .grok: .grok
-        case .gemini: .gemini
+        case .codex:  .codex
+        case .grok:   .grok
         }
         spawnLogin(target)
     }

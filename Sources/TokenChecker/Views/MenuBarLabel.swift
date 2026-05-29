@@ -16,7 +16,7 @@ struct MenuBarLabel: View {
 
     private var renderedImage: NSImage? {
         // 找出当前 5 小时使用率最高的那个服务
-        let services: [Service] = [.claude, .codex, .grok, .gemini]
+        let services: [Service] = [.claude, .codex, .grok]
         let mostConstrained = services
             .compactMap { service -> (Service, Double)? in
                 guard let util = utilization(for: service) else { return nil }

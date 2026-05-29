@@ -9,8 +9,8 @@ struct UsagePopoverView: View {
         VStack(alignment: .leading, spacing: 12) {
             header
 
-            // 4サービスを動的に表示
-            let services: [Service] = [.claude, .codex, .grok, .gemini]
+            // 動的に表示
+            let services: [Service] = [.claude, .codex, .grok]
             ForEach(Array(services.enumerated()), id: \.offset) { index, service in
                 if index > 0 { Divider() }
 

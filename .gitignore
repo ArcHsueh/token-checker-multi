@@ -32,3 +32,14 @@ AGENTS.md
 # docs/ は内部設計メモなので丸ごと非公開
 # README から参照する画像は .github/assets/ に置いてある（こちらは公開）
 docs/
+
+# Personal Grok data
+.grok/
+
+# Build artifacts
+.build/
+*.app
+TokenChecker.app/
+
+# IDE
+.DS_Store

@@ -1,6 +1,5 @@
 # Token Checker Multi / 多服务增强版
 
-<img width="395" height="537" alt="截屏2026-05-29 晚上9 53 32" src="https://github.com/user-attachments/assets/f836489e-cde9-4527-ae84-a6525944f664" />
 
 **中文**  
 一个增强版的 macOS 菜单栏工具，支持 Claude Code、Codex 和 Grok 的使用率实时监控。菜单栏仅显示使用率最高的单个甜甜圈，点击后展开完整纵向列表查看所有服务详情。
@@ -8,6 +7,7 @@
 **English**  
 An enhanced macOS menu bar app for real-time usage monitoring of Claude Code, Codex, and Grok. The menu bar shows only a single donut for the highest-usage service; click to expand a full vertical list with details for all services.
 
+<img width="395" height="537" alt="截屏2026-05-29 晚上9 53 32" src="https://github.com/user-attachments/assets/f836489e-cde9-4527-ae84-a6525944f664" />
 ---
 
 ## 原项目简介（保留日文 / Original Japanese Introduction）

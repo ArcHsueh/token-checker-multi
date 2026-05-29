@@ -97,7 +97,7 @@ final class UsageViewModel {
             switch self {
             case .claude: return "Claude Code"
             case .codex:  return "Codex"
-            case .grok:   return "Grok"
+            case .grok:   return "Grok Build"
             }
         }
     }

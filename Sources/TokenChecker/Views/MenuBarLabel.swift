@@ -32,12 +32,18 @@ struct MenuBarLabel: View {
                     .font(.system(size: 11, weight: .semibold))
             }
             .padding(.horizontal, 4)
-            .foregroundStyle(Color.primary)
+            .foregroundStyle(.white) // menu bar: high contrast on dark status bar
 
             let renderer = ImageRenderer(content: placeholder)
             renderer.scale = 3
             return renderer.nsImage
         }
+
+        let textColor: Color = {
+            if util < 0.7 { return .green }
+            if util < 0.85 { return .orange }
+            return .red
+        }()
 
         let content = HStack(spacing: 4) {
             DonutChartView(
@@ -48,9 +54,9 @@ struct MenuBarLabel: View {
             )
             Text(percentLabel(util))
                 .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(textColor) // green/orange/red warning color for visibility on dark menu bar bg
         }
         .padding(.horizontal, 4)
-        .foregroundStyle(Color.primary)
 
         let renderer = ImageRenderer(content: content)
         let maxScale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 2

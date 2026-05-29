@@ -45,11 +45,11 @@ struct DonutChartView: View {
         case .sfSymbol(let name, let scale):
             Image(systemName: name)
                 .font(.system(size: size * scale, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.white) // menu bar: high contrast on dark status bar background
         case .text(let str, let scale):
             Text(str)
                 .font(.system(size: size * scale, weight: .bold, design: .monospaced))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.white) // menu bar: high contrast on dark status bar background
         }
     }
 
